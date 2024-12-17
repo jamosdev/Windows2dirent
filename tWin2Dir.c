@@ -1,4 +1,5 @@
-#include <jirent.h>
+#include <jirent.h> //or should it be:
+//#include "Windows2dirent.h"
 #include <stdio.h>
 
 int main(int argc,char**argv){

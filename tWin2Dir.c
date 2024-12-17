@@ -12,11 +12,24 @@ int main(int argc,char**argv){
     const char * proc = getenv("PROCESSOR_IDENTIFIER") ? getenv("PROCESSOR_IDENTIFIER") : "unknown CPU";
     printf("Coming at you from %s (%s) with\na %s-core %s:\n",os,pwsh,cores,proc);
     d=opendir("/arj");
-    e=readdir(d);
-    while(e!= NULL) {
-        ++i;
-        printf("%3d) (%s ($%08x) %s\n",i,e->d_type==DT_DIR?"DIR) ":"FILE)",e->d_fileno,e->d_name);
+    if(d) {
         e=readdir(d);
+        while(e!= NULL) {
+            ++i;
+            printf("%3d) (%s ($%08x) %s\n",i,e->d_type==DT_DIR?"DIR) ":"FILE)",e->d_fileno,e->d_name);
+            e=readdir(d);
+        }
+        closedir(d);
+    }
+    d=opendir(".");
+    if(d) {
+        e=readdir(d);
+        while(e!= NULL) {
+            ++i;
+            printf("%3d) (%s ($%08x) %s\n",i,e->d_type==DT_DIR?"DIR) ":"FILE)",e->d_fileno,e->d_name);
+            e=readdir(d);
+        }
+        closedir(d);
     }
     return 0;
 }

@@ -11,9 +11,18 @@ extern "C"
 {
 #endif//__cplusplus
 #ifdef _WIN32
+#ifndef _CRT_SECURE_NO_WARNINGS
+#define _CRT_SECURE_NO_WARNINGS 1
+#endif
 #include <ctype.h>//tolower
 #include <stdlib.h>//getenv
-#include <limits.h>//NAME_MAX,PATH_MAX
+#include <limits.h>//MAX_PATH->NAME_MAX,PATH_MAX
+#ifndef NAME_MAX
+#define NAME_MAX MAX_PATH 
+#endif//NAME_MAX
+#ifndef PATH_MAX
+#define PATH_MAX MAX_PATH 
+#endif//PATH_MAX
 #ifndef NOMINMAX
 #define NOMINMAX 1
 #endif
@@ -78,8 +87,8 @@ static DIR* opendir(const char* dirname) {
     if(dirname[0] == '/') {
         const char * SystemDrive = getenv("SystemDrive");
         const char * HOMEDRIVE = getenv("HOMEDRIVE");
-        const char * default = "C:";
-        const char * chosen = SystemDrive!= NULL ? SystemDrive : HOMEDRIVE != NULL ? HOMEDRIVE : default;
+        const char * defaultDrive = "C:";
+        const char * chosen = SystemDrive!= NULL ? SystemDrive : HOMEDRIVE != NULL ? HOMEDRIVE : defaultDrive;
         offset = strlen(chosen);
         memcpy(workbuf,chosen,offset);
     } else offset=0;
@@ -128,14 +137,14 @@ static struct dirent* readdir(DIR* dirp){
     #ifdef FILE_ATTRIBUTE_REPARSE_POINT
     else if(fd->dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) ret->d_type = DT_LNK;
     #endif
-    else fd->d_type = DT_REG;
+    else ret->d_type = DT_REG;
 
     /*--filename funcs--*/
     fn = & fd->cFileName[0];
     fnlen = strlen(fn);
-    ret->d_namelen = fnlen>254?254:(unsigned char)(fnlen&0xff);
-    memcpy(ret->d_name,fd->cFileName,ret->d_namelen);
-    ret->d_name[ret->d_namelen]='\0';
+    ret->d_namlen = fnlen>254?254:(unsigned char)(fnlen&0xff);
+    memcpy(ret->d_name,fd->cFileName,ret->d_namlen);
+    ret->d_name[ret->d_namlen]='\0';
 
     /*--inode faker--*/
     ret->d_ino = dirp->hash_base | dirp->counter;
@@ -151,13 +160,13 @@ static void rewinddir(DIR* dirp){
     FindClose(dirp->h);
     dirp->counter = 1;
     dirp->errors = 0;
-    ret->h = FindFirstFileA(dirp->reopenbuf, & dirp->d);
+    dirp->h = FindFirstFileA(dirp->reopenbuf, & dirp->d);
     //if(ret->h == INVALID_HANDLE_VALUE)
 }
 static void seekdir(DIR* dirp, long int loc){
-    if(loc > dirp->counter) {
+    if(loc > (long int)dirp->counter) {
         /*--good/easy, but not usually the case as telldir not yet--*/
-        while(loc > dirp->counter) {
+        while(loc > (long int)dirp->counter) {
             struct dirent* null_on_errors = readdir(dirp);
             if(null_on_errors == NULL) break;
         }
@@ -168,7 +177,7 @@ static void seekdir(DIR* dirp, long int loc){
 }
 static long int telldir(DIR* dirp){
     if(dirp == NULL) return 0;
-    dirp->last_telldir_pos = dirp->counter;//for a later seekdir
+    //dirp->last_telldir_pos = dirp->counter;//for a later seekdir
     return dirp->counter;
 }
 static int closedir(DIR*dirp){

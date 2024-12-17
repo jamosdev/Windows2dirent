@@ -88,7 +88,7 @@ static DIR* opendir(const char* dirname) {
     }
     i+=offset;
     if(i+3<PATH_MAX) {
-        memcpy(workbuf+i,"\\*",3);//caps it with a NULL terminator
+        memcpy((workbuf+i)-(workbuf[i]=='\\'?1:0),"\\*",3);//caps it with a NULL terminator, don't double up the "/" at the end (if any)
     } else {
         return NULL;//if we go up one dir (if any) and asterix it, then their recursive directory lister will infinite loop, so just return NULL here
     }
@@ -103,13 +103,13 @@ static DIR* opendir(const char* dirname) {
     /*--before we return, lowercase workbuf and hash it for hash_base for consistent but fake ino for performance!!!--*/
     ret->hash_base=5381;//djb2 algorithm
     for(i=0;workbuf[i]!='\0';++i){
-        unsigned input = (unsigned char)tolower(workbuf[i]);
+        unsigned input = (unsigned char)tolower(workbuf[i]); //must be made case-insentive else the "inode" magically changes when opendir("C:\\MyDocuments") vs opendir("c:\\mydocuments");
         ret->hash_base=((ret->hash_base << 5)+ret->hash_base)+input;
     }
-    ret->hash_base &= 0xFFFFE000UL;
+    ret->hash_base &= 0xFFFFE000UL; //the counter-part to 0x1FFF, for + 1-8191 fileids, reducing chance of hash overlap same "inodes" from other folders.
     ret->counter = 1;
     ret->errors = 0;
-    memcpy(ret->reopenbuf,workbuf,strlen(workbuf));
+    memcpy(ret->reopenbuf,workbuf,strlen(workbuf)+1);
     return ret;
 }
 static struct dirent* readdir(DIR* dirp){
